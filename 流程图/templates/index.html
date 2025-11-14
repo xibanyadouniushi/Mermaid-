@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mermaid实时预览</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+    <style>
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        .editor-pane, .preview-pane, .error-pane {
+            flex: 1;
+            padding: 20px;
+            border: 1px solid #ccc;
+        }
+        .error-pane {
+            display: none;
+            background: #ffe6e6;
+            border-color: #ff9999;
+            color: #cc0000;
+            white-space: pre-wrap;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        #editor {
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-pane">
+            <textarea id="editor" placeholder="输入Mermaid语法..."></textarea>
+        </div>
+        <div class="preview-pane" id="preview"></div>
+            <div class="error-pane" id="error"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/save-svg-as-png@1.4.17/lib/saveSvgAsPng.min.js"></script>
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        
+        // 初始化Mermaid配置
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default'
+        });
+
+        // 实时更新函数
+        function updatePreview() {
+            const code = editor.value;
+            const errorDiv = document.getElementById('error');
+            
+            try {
+                mermaid.parse(code);
+                preview.innerHTML = `<div class="mermaid">${code}</div>`;
+                mermaid.init(undefined, preview.querySelector('.mermaid'));
+                errorDiv.style.display = 'none';
+                preview.style.display = 'block';
+            } catch (err) {
+                preview.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `语法错误：${err.message}\n\n错误位置：${err.str}`;
+            }
+        }
+
+        // 导出图片函数
+        function exportImage() {
+            const svg = document.querySelector('.mermaid svg');
+            if (svg) {
+                const svgString = new XMLSerializer().serializeToString(svg);
+                const svgWithDeclaration = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>${svgString}`;
+                
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                // 设置DPI为300（4倍缩放）
+                const scaleFactor = 4;
+                canvas.width = svg.clientWidth * scaleFactor;
+                canvas.height = svg.clientHeight * scaleFactor;
+                
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    const dataURL = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.download = 'high-quality-diagram.png';
+                    link.href = dataURL;
+                    link.click();
+                };
+                
+                img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgWithDeclaration);
+            } else {
+                alert('请先创建有效的Mermaid图表');
+            }
+        }
+
+        // 绑定输入事件
+        editor.addEventListener('input', updatePreview);
+        // 初始渲染
+        updatePreview();
+        
+        // 添加导出按钮
+        const exportBtn = document.createElement('button');
+        exportBtn.textContent = '导出图片';
+        exportBtn.style.position = 'fixed';
+        exportBtn.style.bottom = '20px';
+        exportBtn.style.right = '20px';
+        exportBtn.style.padding = '10px 20px';
+        exportBtn.style.backgroundColor = '#4CAF50';
+        exportBtn.style.color = 'white';
+        exportBtn.style.border = 'none';
+        exportBtn.style.borderRadius = '4px';
+        exportBtn.style.cursor = 'pointer';
+        exportBtn.onclick = exportImage;
+        document.body.appendChild(exportBtn);
+    </script>
+</body>
+</html>
